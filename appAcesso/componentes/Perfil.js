@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TextInput, Button, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TextInput, TouchableOpacity, Alert, Image, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { auth } from './Firebase';
 import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -57,33 +57,27 @@ const PerfilScreen = () => {
       
       if (!result.canceled) {
         const base64Img = `data:image/jpg;base64,${result.assets[0].base64}`;
-        // Dados para o Cloudinary
         const data = {
           file: base64Img,
           upload_preset: 'preset_publico',
-          cloud_name: 'dgsffmd9f',
+          cloud_name: 'dqzebwdjf',
         };
         
-        const res = await fetch('https://api.cloudinary.com/v1_1/dgsffmd9f/image/upload', {
+        const res = await fetch('https://api.cloudinary.com/v1_1/dqzebwdjf/image/upload', {
           method: 'POST',
           body: JSON.stringify(data),
-          headers: {
-            'content-type': 'application/json',
-          },
+          headers: { 'content-type': 'application/json' },
         });
         
         const json = await res.json();
   
         if (json.secure_url) {
           const user = auth.currentUser;
-          await updateDoc(doc(db, 'users', user.uid), {
-            photoURL: json.secure_url,
-          });
-          // Atualiza os dados do usuário localmente
-          setUserData(prev => ({ ...prev, photoURL: json.secure_url }));
+          await updateDoc(doc(db, 'users', user.uid), { photo: json.secure_url });
+          setUserData(prev => ({ ...prev, photo: json.secure_url }));
           Alert.alert('Sucesso', 'Foto de perfil atualizada!');
         } else {
-          Alert.alert('Erro', 'Erro ao enviar imagem. Verifique se o preset está correto.');
+          Alert.alert('Erro', 'Erro ao enviar imagem. Verifique o preset.');
         }
       }
     } catch (error) {
@@ -92,86 +86,165 @@ const PerfilScreen = () => {
     }
   };
 
-  return (
-    <View style={styles.container}>
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : userData ? (
-        <>
-          <Text style={styles.title}>Perfil do Usuário</Text>
-          
-          {/* Exibe a foto se existir */}
-          {userData.photoURL ? (
-            <Image
-              source={{ uri: userData.photoURL }}
-              style={styles.profileImage}
-            />
-          ) : (
-            <Text style={styles.info}>Nenhuma foto cadastrada.</Text>
-          )}
-          <Button title="Editar Foto de Perfil" onPress={pickImageAndUpload} />
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color="#1db954" />
+      </View>
+    );
+  }
 
-          {isEditing ? (
-            <>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Nome"
-              />
-              <TextInput
-                style={styles.input}
-                value={bio}
-                onChangeText={setBio}
-                placeholder="Bio"
-              />
-              <Button title="Salvar" onPress={handleSave} />
-              <Button title="Cancelar" onPress={() => setIsEditing(false)} color="#888" />
-            </>
-          ) : (
-            <>
-              <Text style={styles.info}>Nome: {userData.name}</Text>
-              <Text style={styles.info}>Bio: {userData.bio}</Text>
-              <Button title="Editar" onPress={() => setIsEditing(true)} />
-            </>
-          )}
+  if (!userData) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <Text style={styles.textWhite}>Usuário não encontrado.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Perfil do Usuário</Text>
+
+      {userData.photo ? (
+        <Image source={{ uri: userData.photo }} style={styles.profileImage} />
+      ) : (
+        <View style={[styles.profileImage, styles.placeholder]}>
+          <Text style={styles.placeholderText}>Sem Foto</Text>
+        </View>
+      )}
+
+      <TouchableOpacity style={styles.btnUpload} onPress={pickImageAndUpload}>
+        <Text style={styles.btnText}>Editar Foto de Perfil</Text>
+      </TouchableOpacity>
+
+      {isEditing ? (
+        <>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Nome"
+            placeholderTextColor="#777"
+          />
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={bio}
+            onChangeText={setBio}
+            placeholder="Bio"
+            placeholderTextColor="#777"
+            multiline
+            numberOfLines={3}
+          />
+
+          <View style={styles.buttonsRow}>
+            <TouchableOpacity style={[styles.btn, styles.btnSave]} onPress={handleSave}>
+              <Text style={styles.btnText}>Salvar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.btn, styles.btnCancel]} onPress={() => setIsEditing(false)}>
+              <Text style={styles.btnText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
         </>
       ) : (
-        <Text>Usuário não encontrado.</Text>
+        <>
+          <Text style={styles.textWhite}><Text style={styles.bold}>Nome:</Text> {userData.name || 'Não definido'}</Text>
+          <Text style={styles.textWhite}><Text style={styles.bold}>Bio:</Text> {userData.bio || 'Não definida'}</Text>
+
+          <TouchableOpacity style={styles.btn} onPress={() => setIsEditing(true)}>
+            <Text style={styles.btnText}>Editar Perfil</Text>
+          </TouchableOpacity>
+        </>
       )}
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    padding: 20 
+  container: {
+    flexGrow: 1,
+    backgroundColor: '#121212',
+    padding: 20,
+    alignItems: 'center',
   },
-  title: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    marginBottom: 10 
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  info: { 
-    fontSize: 18, 
-    marginBottom: 5 
+  title: {
+    color: '#1db954',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  profileImage: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    marginBottom: 15,
+    backgroundColor: '#333',
+  },
+  placeholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    color: '#777',
+    fontSize: 16,
+  },
+  btnUpload: {
+    backgroundColor: '#1db954',
+    paddingVertical: 10,
+    paddingHorizontal: 25,
+    borderRadius: 30,
+    marginBottom: 25,
+  },
+  btnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
   },
   input: {
     width: '100%',
-    borderWidth: 1,
-    padding: 10,
-    marginVertical: 5,
+    backgroundColor: '#222',
+    color: '#fff',
     fontSize: 16,
-    borderRadius: 5,
+    padding: 12,
+    marginBottom: 15,
+    borderRadius: 8,
   },
-  profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  textWhite: {
+    color: '#fff',
+    fontSize: 18,
     marginBottom: 10,
+  },
+  bold: {
+    fontWeight: '700',
+  },
+  buttonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  btn: {
+    backgroundColor: '#1db954',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 30,
+    marginTop: 10,
+  },
+  btnSave: {
+    flex: 1,
+    marginRight: 10,
+  },
+  btnCancel: {
+    backgroundColor: '#555',
+    flex: 1,
+    marginLeft: 10,
   },
 });
 

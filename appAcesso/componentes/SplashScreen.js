@@ -3,12 +3,12 @@ import { View, ActivityIndicator, Image, StyleSheet } from 'react-native';
 
 const SplashScreen = ({ navigation }) => {
   useEffect(() => {
-    // Define a duração do splash (4 segundos)
+    
     const timer = setTimeout(() => {
-      navigation.replace('Login'); // Após o tempo, navega para a tela de login
+      navigation.replace('Login'); 
     }, 4000);
 
-    return () => clearTimeout(timer); // Limpa o timer quando o componente for desmontado
+    return () => clearTimeout(timer); 
   }, [navigation]);
 
   return (
